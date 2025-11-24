@@ -112,8 +112,9 @@ int main(void)
   }
 }
 
-![Image](https://github.com/user-attachments/assets/0eb6eda9-ed84-435e-ac18-b746cefccf8a)
 ~~~
+
+![Image](https://github.com/user-attachments/assets/0eb6eda9-ed84-435e-ac18-b746cefccf8a)
 
 ---
 
