@@ -1,140 +1,112 @@
 # 🎨 STM32 I2C LCD Custom Graphics Library
 
 <div align="center">
-  <img src="https://img.shields.io/badge/STM32-F411-03234B?style=for-the-badge&logo=stmicroelectronics&logoColor=white">
-  <img src="https://img.shields.io/badge/Language-C-A8B9CC?style=for-the-badge&logo=c&logoColor=white">
-  <img src="https://img.shields.io/badge/Library-HAL-FCC624?style=for-the-badge&logo=stm32&logoColor=black">
+  <img src="[https://img.shields.io/badge/STM32-F411-03234B?style=for-the-badge&logo=stmicroelectronics&logoColor=white](https://img.shields.io/badge/STM32-F411-03234B?style=for-the-badge&logo=stmicroelectronics&logoColor=white)">
+  <img src="[https://img.shields.io/badge/Language-C-A8B9CC?style=for-the-badge&logo=c&logoColor=white](https://img.shields.io/badge/Language-C-A8B9CC?style=for-the-badge&logo=c&logoColor=white)">
+  <img src="[https://img.shields.io/badge/Library-HAL-FCC624?style=for-the-badge&logo=stm32&logoColor=black](https://img.shields.io/badge/Library-HAL-FCC624?style=for-the-badge&logo=stm32&logoColor=black)">
 </div>
 
 <br>
 
-**1602 텍스트 LCD를 그래픽 디스플레이처럼 사용해보세요.**
+**1602 텍스트 LCD를 그래픽 디스플레이로 변신시키세요.**
 
-이 라이브러리는 **Dynamic CGRAM Allocation Algorithm** 기반으로 동작하여,  
-일반적인 HD44780 LCD에서 **픽셀 단위 제어, 스프라이트 표현, 애니메이션 구현**을 가능하게 합니다.
-
----
-
-## 📺 Demo
-
-![LCD Execution Result](./assets/lcd_demo.gif)  
-*STM32F411 + 1602 LCD 구현 예시*
+이 라이브러리는 **CGRAM 동적 할당 알고리즘(Dynamic CGRAM Allocation Algorithm)**을 구현하여, 일반적인 1602 캐릭터 LCD(I2C)에서 픽셀 단위의 제어를 가능하게 합니다. 텍스트 전용으로 설계된 디스플레이 위에서 점을 찍거나, 선을 긋고, 간단한 애니메이션을 그릴 수 있습니다.
 
 ---
 
-## ⚙️ How It Works
+## 📺 Demo Result
 
-이 라이브러리는 일반 텍스트 LCD를 **가상의 80×16 픽셀 공간**으로 확장해 표현합니다.
-
-### 🔹 1. Pixel Buffering (`PIXEL_MAP`)
-모든 그리기 명령(`lcd_set_dot()`)은 LCD에 바로 적용되지 않고  
-**80 × 16 비트 크기의 버퍼에 먼저 기록됩니다.**
-
-→ 이 단계에서는 실제 LCD가 변경되지 않습니다.
+![LCD Execution Result](./assets/lcd_demo.gif)
+*STM32F411 + 1602 LCD 구동 예시*
 
 ---
 
-### 🔹 2. Cell Scanning (5×8 Character Cell Parsing)
+## ⚙️ 동작 원리 (Architecture)
 
-1602 LCD는 **가로 16칸 × 세로 2줄 → 총 32칸**으로 구성됩니다.
+이 라이브러리는 픽셀 좌표계와 문자 블록 사이의 간극을 메워줍니다.
 
-각 칸은 다음과 같은 **5×8 픽셀 블록**입니다.
+1.  **가상 버퍼 (`PIXEL_MAP`)**
+    * 라이브러리는 LCD 화면 전체를 픽셀로 나타내는 80x16 비트 메모리 버퍼를 내부적으로 유지 관리합니다.
+    * `lcd_set_dot(y, x)`를 호출하면 실제 LCD가 아닌 이 가상 버퍼가 먼저 업데이트됩니다.
 
-┌───5px───┐
-│ █ █ █ █ │ ← 8 rows (최대 8비트 표현)
-└─────────┘
+2.  **동적 분할 (Dynamic Segmentation)**
+    * 1602 LCD는 5x8 픽셀 크기의 32개 블록(16열 x 2행)으로 구성되어 있습니다.
+    * 라이브러리는 가상 버퍼를 스캔하여 현재 픽셀이 그려져야 하는 블록이 어디인지 식별합니다.
 
-
-버퍼를 스캔하여 **픽셀이 포함된 칸만 활성화 셀로 분류합니다.**
-
----
-
-### 🔹 3. Dynamic CGRAM Allocation
-
-HD44780은 **최대 8개의 사용자 정의 문자(CGRAM)** 를 저장할 수 있습니다.
-
-라이브러리는 활성화된 셀을 순서대로 검사하고:
-
-| 조건 | 처리 |
-|------|------|
-| 아직 CGRAM 여유공간 있음 → | Custom Character로 변환 & LCD에 등록 |
-| 이미 8칸 사용됨 → | 해당 셀은 렌더링 생략 |
-
----
-
-### 🔹 4. Smart Rendering
-
-LCD 전체를 다시 쓰지 않고,  
-**변경된 셀만 업데이트**하여 성능을 최적화합니다.
+3.  **CGRAM 할당 (CGRAM Allocation)**
+    * HD44780 컨트롤러는 **최대 8개의 사용자 정의 문자(CGRAM)**만 지원합니다.
+    * 라이브러리는 활성화된 블록에 대한 픽셀 패턴을 동적으로 생성하고, 제한된 CGRAM 슬롯에 실시간으로 업로드합니다.
+    * 마지막으로, 화면을 업데이트하여 해당 커스텀 문자를 올바른 위치에 표시합니다.
 
 ---
 
 ## ✨ 주요 기능
 
-- 🟩 **픽셀 단위 그리기**
-- ⚙️ **동적 CGRAM 메모리 관리**
-- 🚀 **효율적인 I2C 업데이트**
-- 🎨 **애니메이션 가능**
-- 🔡 텍스트 함수 (`lcd_send_string()`), 커서 이동과 함께 사용 가능
+* **Pixel-Level Control:** `lcd_set_dot(y, x)`를 사용하여 자유로운 도형 표현 가능.
+* **Smart Rendering:** 변경된 블록만 업데이트하여 I2C 통신 부하 최적화.
+* **Hybrid Mode:** 표준 텍스트 출력(`lcd_send_string`)과 그래픽 기능을 함께 사용 가능.
+* **Optimization:** 메모리 사용량 최소화 및 효율적인 비트 연산 적용.
 
 ---
 
-## 🛠 요구 사항
+## 🛠️ 요구 사항 (Requirements)
 
-| 항목 | 사양 |
-|------|------|
-| MCU | STM32F411 (다른 HAL 기반 STM32에서도 동작 가능) |
-| LCD | 1602 HD44780 + PCF8574 I2C Backpack |
-| IDE | STM32CubeIDE |
-| Driver | STM32 HAL |
+* **MCU:** STM32F411 (테스트 완료), 대부분의 STM32 F 시리즈와 호환.
+* **Display:** 1602 LCD (HD44780 호환) + I2C Backpack (PCF8574).
+* **IDE:** STM32CubeIDE
+* **Driver:** STM32 HAL Driver
 
 ---
 
 ## 🚀 사용 방법
 
-### 1️⃣ 라이브러리 추가
+### 1. 프로젝트 통합
+다음 파일들을 프로젝트 폴더에 복사합니다:
+* `Core/Src/my_lcd_i2c.c`
+* `Core/Inc/my_lcd_i2c.h`
 
-프로젝트에 다음 파일을 추가하세요:
-Core/Src/my_lcd_i2c.c
-Core/Inc/my_lcd_i2c.h
-
-
----
-
-### 2️⃣ 예제 코드
+### 2. 메인 코드 작성 예시
+`main.c` 파일에 다음과 같이 코드를 작성합니다.
 
 ~~~c
+/* USER CODE BEGIN Includes */
 #include "my_lcd_i2c.h"
+/* USER CODE END Includes */
 
 int main(void)
 {
+  /* MCU 초기화 코드 생략 */
   HAL_Init();
   SystemClock_Config();
   MX_GPIO_Init();
-  MX_I2C1_Init();
+  MX_I2C1_Init(); 
 
-  // LCD 초기화
+  /* USER CODE BEGIN 2 */
+  // I2C 핸들러를 사용하여 LCD 초기화 (필수)
   lcd_init(&hi2c1);
+  /* USER CODE END 2 */
 
   while (1)
   {
-    // 애니메이션: 왼→오 이동
-    for(int i = 0; i < 68; i++)
-    {
-      // 1. 버퍼에 점 찍기
-      for(int x = 0; x < 12; x++){
-        for(int y = 6; y < 10; y++){
-          lcd_set_dot(y, i + x);
+    /* USER CODE BEGIN 3 */
+    
+    // 애니메이션 예제: 블록 이동시키기
+    for(int i = 0; i < 68; i++){
+        
+        // 1. 가상 버퍼에 픽셀 그리기
+        for(int x = 0; x < 12; x++){
+            for(int y = 6; y < 10; y++){
+                lcd_set_dot(y, i + x); // (y, x) 좌표에 점 찍기
+            }
         }
-      }
-
-      // 2. LCD 렌더링
-      lcd_print_custom();
-
-      HAL_Delay(100);
-
-      // 3. 다음 프레임을 위해 초기화
-      lcd_clear_custom();
+        
+        // 2. LCD 화면 렌더링 (실제 출력)
+        lcd_print_custom();
+        
+        HAL_Delay(100);
+        
+        // 3. 다음 프레임을 위해 가상 버퍼 초기화
+        lcd_clear_custom();
     }
   }
 }
@@ -142,33 +114,34 @@ int main(void)
 
 ---
 
-## 📚 API Reference
+## 📚 API 문서
 
-| 함수 | 설명 |
-|------|------|
-| `lcd_init()` | LCD 및 I2C 초기화 |
-| `lcd_set_dot(y, x)` | 픽셀 생성 |
-| `lcd_clear_dot(y, x)` | 픽셀 삭제 |
-| `lcd_print_custom()` | 버퍼 기반 그래픽 렌더링 |
-| `lcd_clear_custom()` | 버퍼 초기화 |
-| `lcd_send_string()` | 텍스트 출력 |
-| `lcd_set_cursor()` | 커서 이동 |
-
----
-
-## ⚠ 기술적 제한
-
-> 이는 LCD의 **하드웨어 구조(CGRAM)**에 기반한 필수 제약입니다.
-
-- 🔹 **동시에 최대 8개의 Custom Character만 표현 가능**
-- 🔹 픽셀 간 **간격으로 인해 연결선이 완벽히 연속적으로 보이지 않을 수 있음**
-- 🔹 해상도: **80px × 16px**
+| 함수명 | 매개변수 | 설명 | 비고 |
+| :--- | :--- | :--- | :--- |
+| `lcd_init` | `hi2c` | LCD 및 I2C 연결 초기화 | **최초 1회 필수 호출** |
+| `lcd_set_dot` | `y`, `x` | (y, x) 좌표에 점 찍기 | 버퍼만 업데이트됨 |
+| `lcd_clear_dot` | `y`, `x` | (y, x) 좌표의 점 지우기 | 버퍼만 업데이트됨 |
+| `lcd_print_custom` | `void` | **버퍼 내용을 LCD에 출력** | I2C 전송 수행 |
+| `lcd_clear_custom` | `void` | 그래픽 버퍼 전체 초기화 | 애니메이션 구현 시 사용 |
+| `lcd_send_string` | `str` | 일반 텍스트 출력 | 기본 기능 |
+| `lcd_set_cursor` | `r`, `c` | 커서 위치 이동 | 기본 기능 |
 
 ---
+
+## ⚠️ 기술적 제약 사항
+
+HD44780 컨트롤러의 하드웨어 구조로 인해 다음 사항을 유의해야 합니다.
+
+### 1. CGRAM 8개 제한 (The 8-Character Limit)
+* LCD는 한 번에 **8개의 커스텀 문자**만 CGRAM에 저장할 수 있습니다.
+* **제약:** 화면 전체를 복잡한 그래픽으로 채울 수는 없습니다. 픽셀이 포함된 5x8 블록의 개수가 8개를 초과하면, 초과된 블록은 렌더링되지 않습니다.
+
+### 2. 해상도 및 간격 (Resolution & Gaps)
+* **해상도:** 80px (가로) x 16px (세로).
+* **물리적 간격:** 문자 블록 사이에 미세한 물리적 간격이 있어, 연속된 가로선이 약간 끊겨 보일 수 있습니다.
 
 <br>
+
 <div align="center">
-  Author: <a href="https://github.com/StrongThrow">SongGu Kang</a>
+  Author: <a href="[https://github.com/StrongThrow](https://github.com/StrongThrow)">SongGu Kang</a>
 </div>
-
-
