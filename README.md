@@ -16,7 +16,7 @@
 
 ## 📺 Demo Result
 
-![LCD Execution Result](./assets/lcd_demo.gif)
+![Image](https://github.com/user-attachments/assets/0eb6eda9-ed84-435e-ac18-b746cefccf8a)
 *STM32F411 + 1602 LCD 구동 예시*
 
 ---
