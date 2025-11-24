@@ -63,8 +63,8 @@
 
 ### 1. 프로젝트 통합
 다음 파일들을 프로젝트 폴더에 복사합니다:
-* `Core/Src/my_lcd_i2c.c`
-* `Core/Inc/my_lcd_i2c.h`
+* `my_lcd_i2c.c` -> 'Core/Src'
+* `my_lcd_i2c.h` -> 'Core/Inc'
 
 ### 2. 메인 코드 작성 예시
 `main.c` 파일에 다음과 같이 코드를 작성합니다.
